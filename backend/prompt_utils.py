@@ -4,7 +4,7 @@ Prompt Engineering Module - Futures-War Project
 Transforms raw Whisper transcription into optimized AI image generation prompt
 with Safe For Work filtering and Marseille context enrichment.
 
-Pipeline: Raw Text → Clean → Validate (SFW) → Enrich → JSON Output
+Pipeline: Raw Text → Clean → Validate (SFW) → Enrich (Dynamic) → JSON Output
 """
 
 import re
@@ -33,6 +33,102 @@ BASE_STYLE = (
     "ultra detailed, high resolution, 4k, award-winning photography, "
     "professional quality, warm sunlight, architectural marvel"
 )
+
+# ============================================================================
+# DYNAMIC KEYWORD ENRICHMENT LIBRARY
+# ============================================================================
+
+KEYWORD_ENHANCEMENTS = {
+    # Ecology & Environment
+    ("écologie", "écologique", "vert", "green", "environmental", "sustainable", "ecology"):
+        ", lush vegetation, rooftop gardens, urban forest, green energy, "
+        "renewable sources, solar panels, eco-friendly infrastructure, "
+        "sustainable materials, living walls",
+    
+    # Transport & Mobility
+    ("transport", "mobility", "transit", "bus", "metro", "transports", "mobilité"):
+        ", futuristic transportation system, autonomous vehicles, smart mobility, "
+        "solar-powered transit, modern trams, intelligent traffic, "
+        "pedestrian-friendly streets, cycling infrastructure, high-speed rail",
+    
+    # Water & Maritime
+    ("eau", "water", "marine", "port", "harbor", "waterfront", "sea"):
+        ", waterfront development, modern marina, clean waterways, "
+        "sustainable fishing, maritime tourism, water taxis, "
+        "scenic harbor views, vibrant quays",
+    
+    # Technology & Innovation
+    ("technologie", "technology", "innovation", "smart", "digital", "connected", "future"):
+        ", cutting-edge technology, smart city infrastructure, IoT integration, "
+        "holographic displays, connected systems, advanced robotics, "
+        "5G networks, innovative design",
+    
+    # Year 2050 / Futuristic
+    ("2050", "futur", "future", "demain", "next generation", "tomorrow", "ahead"):
+        ", advanced future cityscape, next-generation architecture, "
+        "visionary design, transformative development, forward-thinking, "
+        "progress, innovation hub, century ahead",
+    
+    # Cultural & Heritage
+    ("culture", "culturelle", "heritage", "art", "artist", "museum", "historical"):
+        ", vibrant cultural scene, artistic communities, creative districts, "
+        "public art installations, cultural landmarks, heritage preservation, "
+        "historic sites, museum district",
+    
+    # Tourism & Recreation
+    ("tourisme", "touriste", "recreation", "loisir", "beach", "plage", "leisure"):
+        ", tourist destination, recreational areas, leisure facilities, "
+        "beach clubs, entertainment venues, vibrant nightlife, "
+        "public spaces, promenades",
+    
+    # Quality of Life
+    ("qualité", "vie", "quality", "life", "vivre", "habitable", "livable"):
+        ", high quality of life, comfortable living, well-being spaces, "
+        "health-conscious design, happiness index, social cohesion, "
+        "strong community bonds",
+    
+    # Business & Economy
+    ("commerce", "business", "économie", "economy", "startups", "entreprise", "economy"):
+        ", vibrant business district, startup hub, economic powerhouse, "
+        "corporate headquarters, innovation centers, job creation, "
+        "commercial hubs, professional spaces",
+    
+    # Energy & Renewable
+    ("énergie", "energy", "solar", "renouvelable", "renewable", "wind", "clean"):
+        ", renewable energy infrastructure, solar architecture, "
+        "wind turbines, geothermal systems, energy-efficient buildings, "
+        "clean power generation, carbon-neutral",
+    
+    # Architecture & Design
+    ("architecture", "bâtiment", "building", "design", "structure", "façade", "moderne"):
+        ", stunning architecture, modern structures, iconic buildings, "
+        "award-winning design, contemporary facades, innovative structures, "
+        "architectural excellence",
+    
+    # Nature & Parks
+    ("parc", "park", "nature", "naturel", "arbre", "tree", "fleurs", "flowers"):
+        ", abundant green spaces, nature reserves, botanical gardens, "
+        "urban parks, landscaped areas, tree-lined streets, "
+        "natural beauty, wildlife corridors",
+    
+    # Mediterranean Context
+    ("méditerranée", "mediterranean", "provence", "marseille", "côte", "coast"):
+        ", Mediterranean architecture, coastal vibes, provençal charm, "
+        "sun-drenched locations, warm Mediterranean climate, "
+        "blue skies, seaside elegance",
+    
+    # Residential & Housing
+    ("résidentiel", "residential", "housing", "maison", "apartment", "habitation", "dwell"):
+        ", residential communities, modern housing, apartments, "
+        "family neighborhoods, comfortable homes, safe communities, "
+        "diverse housing options",
+    
+    # Public Spaces & Gathering
+    ("place", "square", "plaza", "espace public", "public space", "gathering"):
+        ", public squares, gathering spaces, community hubs, "
+        "vibrant plazas, social spaces, outdoor venues, pedestrian areas, "
+        "inclusive spaces",
+}
 
 
 # ============================================================================
@@ -102,18 +198,49 @@ def is_prompt_safe(text: str) -> tuple[bool, str]:
 
 
 # ============================================================================
-# STEP 3: ENRICHMENT (STATIC FOR V1)
+# STEP 3: DYNAMIC ENRICHMENT (V2 - KEYWORD BASED)
 # ============================================================================
+
+def enrich_with_keywords(text: str) -> str:
+    """
+    Dynamically enrich prompt based on detected keywords.
+    
+    Scans text for keywords and adds contextual enhancements.
+    Supports French and English keywords.
+    
+    Args:
+        text: Cleaned user prompt
+        
+    Returns:
+        Enriched prompt text with relevant context added
+    """
+    if not text:
+        return ""
+    
+    text_lower = text.lower()
+    enhancements = []
+    
+    # Check each keyword group
+    for keywords, enhancement in KEYWORD_ENHANCEMENTS.items():
+        # Check if any keyword in the group is found
+        if any(keyword in text_lower for keyword in keywords):
+            enhancements.append(enhancement)
+    
+    # Build enriched text
+    result = text
+    if enhancements:
+        # Combine all relevant enhancements (avoid duplication by using set)
+        combined = ", ".join(set(enhancements))
+        result += combined
+    
+    return result
+
 
 def enrich_prompt(text: str) -> str:
     """
-    Enrich user text with Marseille context and style.
+    Enrich user text with Marseille context and dynamic keywords.
     
-    V1: Static enrichment - just add base style
-    V2 (TODO): Dynamic enrichment based on keywords
-        - if "écologique" → add green/sustainable keywords
-        - if "transport" → add mobility keywords
-        - if "2050" → add futuristic keywords
+    V2: Dynamic enrichment based on keywords + base style
     
     Args:
         text: Cleaned user prompt
@@ -124,15 +251,11 @@ def enrich_prompt(text: str) -> str:
     if not text:
         return BASE_STYLE
     
-    # V1: Simple concatenation with base style
-    enriched = f"{text}, {BASE_STYLE}"
+    # Step 1: Add dynamic keyword enhancements
+    enriched = enrich_with_keywords(text)
     
-    # TODO V2: Dynamic keyword expansion
-    # Example:
-    # if "transport" in text.lower():
-    #     enriched += ", futuristic mobility, smart transportation system"
-    # if "vert" in text.lower() or "écolog" in text.lower():
-    #     enriched += ", lush vegetation, rooftop gardens, urban forest"
+    # Step 2: Add base style for consistency
+    enriched = f"{enriched}, {BASE_STYLE}"
     
     return enriched
 
@@ -167,7 +290,7 @@ def build_final_prompt(text: str) -> dict:
     Pipeline:
     1. Clean the text
     2. Validate SFW
-    3. Enrich with context
+    3. Enrich with dynamic keywords
     4. Build negative prompt
     5. Return structured JSON
     
@@ -201,7 +324,7 @@ def build_final_prompt(text: str) -> dict:
             "negative_prompt": None
         }
     
-    # Step 3: Enrich
+    # Step 3: Enrich with dynamic keywords
     enriched = enrich_prompt(cleaned)
     
     # Step 4: Build negative prompt
@@ -228,13 +351,15 @@ def test_prompt_builder():
     test_cases = [
         "Marseille avec plus d'arbres",
         "Marseille écologique en 2050",
-        "Des transports solaires",
+        "Des transports solaires et verts",
+        "Innovation technologique et culture",
+        "Qualité de vie et nature",
         "nude Marseille",  # Should fail SFW
         "violence at the beach",  # Should fail SFW
     ]
     
     print("=" * 80)
-    print("PROMPT BUILDER TEST")
+    print("PROMPT BUILDER TEST - WITH DYNAMIC ENRICHMENT")
     print("=" * 80)
     
     for test_input in test_cases:
@@ -243,8 +368,9 @@ def test_prompt_builder():
         
         if result["success"]:
             print(f"✅ SUCCESS")
+            print(f"   Original: {result['original_text']}")
             print(f"   Cleaned: {result['cleaned_text']}")
-            print(f"   Prompt: {result['positive_prompt'][:100]}...")
+            print(f"   Enriched: {result['positive_prompt'][:150]}...")
         else:
             print(f"❌ BLOCKED: {result['error']}")
         print()
