@@ -17,18 +17,18 @@ from gpu_client import get_gpu_client
 from dotenv import load_dotenv
 load_dotenv()
 
-# =============================================================================
+
 # CONFIGURATION
-# =============================================================================
+
 
 API_BEARER_TOKEN = os.getenv("API_BEARER_TOKEN", "futures-war-secret-token-2026")
 
 # Créer le dossier uploads
 os.makedirs("uploads", exist_ok=True)
 
-# =============================================================================
+
 # APPLICATION FASTAPI
-# =============================================================================
+
 
 app = FastAPI(
     title="AI Orchestrator API",
@@ -45,9 +45,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# =============================================================================
+
 # SÉCURITÉ
-# =============================================================================
+
 
 security = HTTPBearer()
 
@@ -60,9 +60,9 @@ def verify_token(credentials: HTTPAuthorizationCredentials = Depends(security)):
         )
     return credentials.credentials
 
-# =============================================================================
+
 # MODÈLES DE DONNÉES
-# =============================================================================
+
 
 class SpeechToTextResponse(BaseModel):
     text: str
@@ -81,9 +81,8 @@ class PromptToImageResponse(BaseModel):
     images: List[str]
     model: str
 
-# =============================================================================
+
 # ROUTES
-# =============================================================================
 
 @app.get("/", tags=["health"])
 def root():
@@ -100,9 +99,9 @@ def root():
         }
     }
 
-# -----------------------------------------------------------------------------
+
 # SPEECH-TO-TEXT
-# -----------------------------------------------------------------------------
+
 
 @app.post(
     "/api/speech-to-text",
@@ -145,9 +144,9 @@ async def speech_to_text(file: UploadFile = File(...)):
             os.remove(file_path)
         raise HTTPException(status_code=500, detail=str(e))
 
-# -----------------------------------------------------------------------------
+
 # PROMPT-TO-IMAGE
-# -----------------------------------------------------------------------------
+
 
 @app.post(
     "/api/prompt-to-image",
@@ -185,9 +184,9 @@ async def prompt_to_image(request: PromptToImageRequest):
         model=request.model
     )
 
-# -----------------------------------------------------------------------------
+
 # SYSTEM STATS
-# -----------------------------------------------------------------------------
+
 
 @app.get(
     "/api/system-stats",
@@ -254,9 +253,9 @@ async def system_stats():
         }
     }
 
-# =============================================================================
+
 # LANCEMENT
-# =============================================================================
+
 
 if __name__ == "__main__":
     import uvicorn
@@ -267,4 +266,4 @@ if __name__ == "__main__":
     print(f"🔐 Token: {API_BEARER_TOKEN}")
     print("=" * 60)
     uvicorn.run("app:app", host="0.0.0.0", port=8000, reload=True)
->>>>>>> Pierre
+
