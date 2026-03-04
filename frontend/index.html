@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Futures War - Imagine le futur de Marseille</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header>
+            <h1>🌆 Futures War</h1>
+            <p class="subtitle">Imagine le futur de Marseille en 2050</p>
+        </header>
+
+        <!-- Section Audio -->
+        <section class="audio-section">
+            <h2>🎤 Étape 1 : Décris ton futur idéal</h2>
+            
+            <div class="recorder">
+                <button id="recordBtn" class="btn-record">
+                    <span class="icon">🎤</span>
+                    <span class="text">Appuyer pour parler</span>
+                </button>
+                
+                <div id="recordingIndicator" class="recording-indicator hidden">
+                    <span class="pulse"></span>
+                    <span>Enregistrement en cours...</span>
+                    <span id="timer">0:00</span>
+                </div>
+            </div>
+
+            <p class="hint">💡 Exemple : "Marseille avec des jardins sur les toits et des tramways solaires"</p>
+        </section>
+
+        <!-- Section Transcription -->
+        <section class="transcription-section" id="transcriptionSection">
+            <h2>📝 Étape 2 : Transcription</h2>
+            
+            <div id="loadingTranscription" class="loading hidden">
+                <div class="spinner"></div>
+                <p>Transcription en cours...</p>
+            </div>
+
+            <div id="transcriptionResult" class="result-box hidden">
+                <p id="transcriptionText"></p>
+                <button id="generateBtn" class="btn-primary">
+                    🎨 Générer l'image
+                </button>
+            </div>
+        </section>
+
+        <!-- Section Image -->
+        <section class="image-section" id="imageSection">
+            <h2>🖼️ Étape 3 : Image générée</h2>
+            
+            <div id="loadingImage" class="loading hidden">
+                <div class="spinner"></div>
+                <p>Génération de l'image... (cela peut prendre 10-30 secondes)</p>
+            </div>
+
+            <div id="imageResult" class="result-box hidden">
+                <img id="generatedImage" src="" alt="Image générée">
+                <button id="newImageBtn" class="btn-secondary">
+                    🔄 Nouvelle image
+                </button>
+            </div>
+        </section>
+
+        <!-- Messages d'erreur -->
+        <div id="errorMessage" class="error-message hidden"></div>
+
+        <!-- Footer -->
+        <footer>
+            <p>Projet académique - La Plateforme 2026</p>
+            <p>Challenge Futures War - B2</p>
+        </footer>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
