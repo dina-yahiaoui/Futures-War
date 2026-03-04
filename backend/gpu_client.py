@@ -26,8 +26,8 @@ class GPUClient:
         self,
         prompt: str,
         negative_prompt: Optional[str] = None,
-        width: int = 1024,
-        height: int = 1024,
+        width: int = 512,
+        height: int = 512,
         steps: int = 9,
         guidance_scale: float = 0.0,
         seed: Optional[int] = None
@@ -72,7 +72,7 @@ class GPUClient:
                 f"{self.base_url}/api/prompt-to-image",
                 headers=self.headers,
                 json=payload,
-                timeout=60  # 60 secondes max
+                timeout=120  # 120 secondes max
             )
             
             # Vérifier la réponse
