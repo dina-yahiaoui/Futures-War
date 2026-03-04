@@ -1,0 +1,347 @@
+/* ============================================
+   FUTURES WAR - STYLES
+   Couleurs inspirées de Marseille
+   ============================================ */
+
+:root {
+    /* Couleurs Marseille */
+    --primary: #0891B2;        /* Turquoise méditerranée */
+    --primary-dark: #0E7490;
+    --secondary: #F59E0B;      /* Orange soleil */
+    --background: #F0F9FF;
+    --surface: #FFFFFF;
+    --text: #1E293B;
+    --text-light: #64748B;
+    --success: #10B981;
+    --error: #EF4444;
+    --border: #E2E8F0;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: linear-gradient(135deg, var(--background) 0%, #E0F2FE 100%);
+    color: var(--text);
+    line-height: 1.6;
+    min-height: 100vh;
+}
+
+.container {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 2rem 1rem;
+}
+
+/* ============================================
+   HEADER
+   ============================================ */
+
+header {
+    text-align: center;
+    margin-bottom: 3rem;
+    padding: 2rem;
+    background: var(--surface);
+    border-radius: 1rem;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+header h1 {
+    font-size: 2.5rem;
+    color: var(--primary);
+    margin-bottom: 0.5rem;
+}
+
+.subtitle {
+    font-size: 1.1rem;
+    color: var(--text-light);
+}
+
+/* ============================================
+   SECTIONS
+   ============================================ */
+
+section {
+    background: var(--surface);
+    padding: 2rem;
+    margin-bottom: 2rem;
+    border-radius: 1rem;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+section h2 {
+    font-size: 1.5rem;
+    color: var(--primary-dark);
+    margin-bottom: 1.5rem;
+}
+
+/* ============================================
+   BOUTONS
+   ============================================ */
+
+button {
+    cursor: pointer;
+    border: none;
+    border-radius: 0.5rem;
+    font-size: 1rem;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    font-family: inherit;
+}
+
+.btn-record {
+    width: 100%;
+    padding: 2rem;
+    background: var(--primary);
+    color: white;
+    font-size: 1.2rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.btn-record:hover {
+    background: var(--primary-dark);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(8, 145, 178, 0.3);
+}
+
+.btn-record:active {
+    transform: translateY(0);
+}
+
+.btn-record .icon {
+    font-size: 2rem;
+}
+
+.btn-record.recording {
+    background: var(--error);
+}
+
+.btn-primary {
+    width: 100%;
+    padding: 1rem 2rem;
+    background: var(--secondary);
+    color: white;
+    margin-top: 1rem;
+}
+
+.btn-primary:hover {
+    background: #D97706;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
+}
+
+.btn-secondary {
+    width: 100%;
+    padding: 1rem 2rem;
+    background: var(--primary);
+    color: white;
+    margin-top: 1rem;
+}
+
+.btn-secondary:hover {
+    background: var(--primary-dark);
+}
+
+/* ============================================
+   ENREGISTREMENT
+   ============================================ */
+
+.recorder {
+    position: relative;
+}
+
+.recording-indicator {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    padding: 1.5rem;
+    background: #FEE2E2;
+    border: 2px solid var(--error);
+    border-radius: 0.5rem;
+    margin-top: 1rem;
+    color: var(--error);
+    font-weight: 600;
+}
+
+.pulse {
+    width: 12px;
+    height: 12px;
+    background: var(--error);
+    border-radius: 50%;
+    animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+    0%, 100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+    50% {
+        opacity: 0.5;
+        transform: scale(1.2);
+    }
+}
+
+#timer {
+    font-variant-numeric: tabular-nums;
+    min-width: 3ch;
+}
+
+.hint {
+    margin-top: 1rem;
+    padding: 1rem;
+    background: #FEF3C7;
+    border-left: 4px solid var(--secondary);
+    border-radius: 0.25rem;
+    color: var(--text);
+    font-size: 0.9rem;
+}
+
+/* ============================================
+   RÉSULTATS
+   ============================================ */
+
+.result-box {
+    padding: 1.5rem;
+    background: var(--background);
+    border-radius: 0.5rem;
+    border: 1px solid var(--border);
+}
+
+#transcriptionText {
+    font-size: 1.1rem;
+    line-height: 1.8;
+    color: var(--text);
+    padding: 1rem;
+    background: white;
+    border-radius: 0.5rem;
+    border-left: 4px solid var(--primary);
+}
+
+#generatedImage {
+    width: 100%;
+    height: auto;
+    border-radius: 0.5rem;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* ============================================
+   LOADING
+   ============================================ */
+
+.loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+    padding: 2rem;
+}
+
+.spinner {
+    width: 50px;
+    height: 50px;
+    border: 4px solid var(--border);
+    border-top-color: var(--primary);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.loading p {
+    color: var(--text-light);
+}
+
+/* ============================================
+   ERREURS
+   ============================================ */
+
+.error-message {
+    position: fixed;
+    top: 2rem;
+    right: 2rem;
+    background: var(--error);
+    color: white;
+    padding: 1rem 1.5rem;
+    border-radius: 0.5rem;
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+    max-width: 400px;
+    animation: slideIn 0.3s ease;
+    z-index: 1000;
+}
+
+@keyframes slideIn {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+/* ============================================
+   UTILITAIRES
+   ============================================ */
+
+.hidden {
+    display: none !important;
+}
+
+/* ============================================
+   FOOTER
+   ============================================ */
+
+footer {
+    text-align: center;
+    padding: 2rem 0;
+    color: var(--text-light);
+    font-size: 0.9rem;
+}
+
+footer p {
+    margin: 0.25rem 0;
+}
+
+/* ============================================
+   RESPONSIVE
+   ============================================ */
+
+@media (max-width: 640px) {
+    .container {
+        padding: 1rem;
+    }
+
+    header h1 {
+        font-size: 2rem;
+    }
+
+    section {
+        padding: 1.5rem;
+    }
+
+    .btn-record {
+        padding: 1.5rem;
+        font-size: 1rem;
+    }
+
+    .error-message {
+        top: 1rem;
+        right: 1rem;
+        left: 1rem;
+        max-width: none;
+    }
+}
