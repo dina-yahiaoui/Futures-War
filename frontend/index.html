@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Futures-War: Marseille 2050 Image Generator</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🎨 Futures-War: Marseille 2050</h1>
+            <p>Generate AI images of the future of Marseille</p>
+        </header>
+        
+        <main>
+            <section class="input-section">
+                <label for="prompt-input">Describe your vision:</label>
+                <textarea 
+                    id="prompt-input" 
+                    placeholder="e.g., Marseille with more green spaces, sustainable solar transport, futuristic architecture..."
+                    rows="4"
+                ></textarea>
+                <button onclick="generateImage()">🚀 Generate Image</button>
+            </section>
+            
+            <section class="messages">
+                <div id="error-message"></div>
+                <div id="success-message"></div>
+            </section>
+            
+            <section id="image-container" class="image-section"></section>
+        </main>
+        
+        <footer>
+            <p>⚠️ <strong>Safe For Work Only:</strong> Inappropriate content will be blocked.</p>
+            <p>All generated images are SFW compliant.</p>
+        </footer>
+    </div>
+    
+    <script src="script.js"></script>
+</body>
+</html>
