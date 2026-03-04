@@ -1,22 +1,24 @@
 FROM python:3.10-slim
 
-# Dossier de travail dans le container
 WORKDIR /app
 
-# Copie les dépendances
+# Installer git + ffmpeg (whisper)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    git \
+    ffmpeg \
+ && rm -rf /var/lib/apt/lists/*
+
+# Copier requirements à la racine
 COPY requirements.txt .
 
-# Installation des dépendances
+# Installer dépendances
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copie du code backend
+# Copier backend
 COPY backend/ ./backend
 
-# On se place dans le dossier backend
 WORKDIR /app/backend
 
-# On expose le port utilisé par Flask
 EXPOSE 8000
 
-# 👉 Commande qui lance réellement Flask dans le container
-CMD ["python", "app.py"]
+CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8000"]

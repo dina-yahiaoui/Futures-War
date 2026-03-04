@@ -1,2 +1,30 @@
-flask
-sqlalchemy
+# Dépendances pour Futures War API
+
+# Framework API
+fastapi
+uvicorn[standard]
+python-multipart
+
+# Authentification et sécurité
+python-dotenv
+
+# IA - Whisper (version plus récente compatible)
+git+https://github.com/openai/whisper.git
+
+# PyTorch (version compatible)
+torch
+torchaudio
+
+# Validation de données
+pydantic
+
+# Utilitaires
+requests
+Pillow
+
+# Monitoring système
+psutil
+
+# Pour les tests
+pytest
+httpx
