@@ -3,20 +3,20 @@ FROM python:3.10-slim
 # Dossier de travail dans le container
 WORKDIR /app
 
-# On copie les dépendances (requirements à la racine)
+# Copie les dépendances
 COPY requirements.txt .
 
-# On installe les dépendances
+# Installation des dépendances
 RUN pip install --no-cache-dir -r requirements.txt
 
-# On copie le code backend dans /app/backend
+# Copie du code backend
 COPY backend/ ./backend
 
-# On se place dans le backend
+# On se place dans le dossier backend
 WORKDIR /app/backend
 
-# On expose le port Flask
+# On expose le port utilisé par Flask
 EXPOSE 8000
 
-# Commande de lancement
+# 👉 Commande qui lance réellement Flask dans le container
 CMD ["python", "app.py"]
