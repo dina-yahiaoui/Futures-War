@@ -1,0 +1,699 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Visio — Générateur d'image IA</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300&family=DM+Mono:wght@300;400&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:         #0c0c0e;
+  --surface:    #18181e;
+  --surface2:   #22222a;
+  --border:     rgba(255,255,255,0.07);
+  --border-lit: rgba(212,175,75,0.4);
+  --gold:       #d4af4b;
+  --gold-dim:   rgba(212,175,75,0.12);
+  --gold-glow:  rgba(212,175,75,0.08);
+  --text:       #ffffff;
+  --text-muted: #d4cfc8;
+  --text-dim:   #f0ece6;
+  --danger:     #c0584a;
+  --success:    #5aac8a;
+  --radius:     14px;
+  --font-serif: 'Cormorant Garamond', Georgia, serif;
+  --font-mono:  'DM Mono', 'Courier New', monospace;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: var(--font-mono);
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+body::before {
+  content: '';
+  position: fixed; inset: 0; z-index: 0; pointer-events: none;
+  opacity: 0.04;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 200px;
+}
+
+header {
+  position: relative; z-index: 10;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 18px 48px;
+  border-bottom: 1px solid var(--border);
+  animation: fadeDown .5s ease both;
+  gap: 24px;
+}
+
+.logo {
+  display: flex; align-items: center; gap: 10px;
+  font-family: var(--font-serif);
+  font-size: 1.9rem;
+  font-weight: 600;
+  letter-spacing: .06em;
+  color: var(--gold);
+  flex-shrink: 0;
+}
+
+.logo-mark { display: inline-block; animation: spin 14s linear infinite; }
+
+.tagline {
+  font-size: .82rem;
+  letter-spacing: .2em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+/* ── System Stats ── */
+.sys-stats {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 10px 20px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 50px;
+  flex: 1;
+  max-width: 480px;
+}
+
+.stat-item {
+  display: flex; align-items: center; gap: 8px; flex: 1;
+}
+
+.stat-label {
+  font-size: .65rem; letter-spacing: .14em; text-transform: uppercase;
+  color: var(--text-muted); width: 28px; flex-shrink: 0;
+}
+
+.stat-bar-wrap {
+  flex: 1; height: 3px; background: var(--surface2); border-radius: 2px; overflow: hidden;
+}
+
+.stat-bar {
+  height: 100%; width: 0%;
+  background: linear-gradient(90deg, var(--gold), #f0d060);
+  border-radius: 2px; transition: width .6s ease;
+}
+
+.stat-bar.warn { background: linear-gradient(90deg, #e08030, #f0a050); }
+.stat-bar.crit { background: linear-gradient(90deg, var(--danger), #e07060); }
+
+.stat-value {
+  font-size: .68rem; color: var(--text-dim); width: 32px; text-align: right; flex-shrink: 0;
+}
+
+/* ── Layout ── */
+.container {
+  position: relative; z-index: 5;
+  display: grid;
+  grid-template-columns: 420px 1fr;
+  height: calc(100vh - 73px);
+}
+
+.panel-label {
+  font-size: .78rem; letter-spacing: .22em; text-transform: uppercase;
+  color: var(--text-muted); margin-bottom: 24px;
+}
+
+/* ── Left Panel ── */
+.left-panel {
+  padding: 44px 40px;
+  border-right: 1px solid var(--border);
+  display: flex; flex-direction: column; gap: 24px;
+  overflow-y: auto;
+  animation: fadeUp .6s .1s ease both;
+}
+
+.textarea-wrapper {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); transition: border-color .25s, box-shadow .25s;
+}
+
+.textarea-wrapper:focus-within {
+  border-color: var(--border-lit); box-shadow: 0 0 0 3px var(--gold-glow);
+}
+
+textarea {
+  width: 100%; height: 180px; padding: 20px;
+  background: transparent; border: none; outline: none; resize: none;
+  font-family: var(--font-serif); font-size: 1.25rem; font-weight: 300;
+  line-height: 1.7; color: var(--text); caret-color: var(--gold);
+}
+
+textarea::placeholder { color: #a09890; font-style: italic; }
+
+.char-counter {
+  padding: 4px 18px 12px; text-align: right;
+  font-size: .75rem; letter-spacing: .1em; color: var(--text-muted);
+}
+
+.actions { display: flex; gap: 10px; }
+
+.btn-generate {
+  flex: 1; position: relative;
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+  padding: 15px 22px;
+  background: linear-gradient(130deg, #b8922e 0%, #dfc05e 45%, #a87c22 100%);
+  color: #0c0c0e; border: none; border-radius: var(--radius);
+  font-family: var(--font-mono); font-size: .92rem; font-weight: 400;
+  letter-spacing: .14em; text-transform: uppercase;
+  cursor: pointer; overflow: hidden;
+  transition: transform .18s, box-shadow .25s;
+  box-shadow: 0 4px 20px rgba(212,175,75,0.22);
+}
+
+.btn-generate:hover { transform: translateY(-2px); box-shadow: 0 8px 28px rgba(212,175,75,0.36); }
+.btn-generate:active { transform: translateY(0); }
+.btn-generate.loading { opacity: .65; pointer-events: none; }
+
+.btn-icon { font-size: .85rem; animation: pulse 2.4s ease-in-out infinite; }
+
+.btn-generate::after {
+  content: ''; position: absolute; inset: 0;
+  background: linear-gradient(105deg, transparent 30%, rgba(255,255,255,0.28) 50%, transparent 70%);
+  transform: translateX(-100%); transition: transform .5s ease;
+}
+.btn-generate:hover::after { transform: translateX(100%); }
+
+.btn-voice {
+  position: relative;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+  padding: 12px 20px; background: var(--surface); color: var(--text-dim);
+  border: 1px solid var(--border); border-radius: var(--radius);
+  font-family: var(--font-mono); font-size: .74rem; letter-spacing: .14em;
+  text-transform: uppercase; cursor: pointer;
+  transition: border-color .2s, color .2s, transform .18s;
+}
+
+.btn-voice:hover { border-color: var(--border-lit); color: var(--gold); transform: translateY(-1px); }
+.btn-voice.recording { border-color: var(--danger); color: var(--danger); animation: recordPulse 1s ease-in-out infinite; }
+.mic-icon { font-size: 1.2rem; }
+
+.status-bar {
+  display: flex; align-items: center; gap: 10px;
+  font-size: .8rem; letter-spacing: .1em; color: var(--text-muted); min-height: 18px;
+}
+
+.status-dot {
+  width: 5px; height: 5px; border-radius: 50%;
+  background: var(--text-muted); flex-shrink: 0;
+  transition: background .3s, box-shadow .3s;
+}
+
+.status-bar.active    .status-dot { background: var(--gold);    box-shadow: 0 0 7px var(--gold);    animation: blink 1s infinite; }
+.status-bar.recording .status-dot { background: var(--danger);  box-shadow: 0 0 7px var(--danger);  animation: blink .6s infinite; }
+.status-bar.success   .status-dot { background: var(--success); box-shadow: 0 0 7px var(--success); }
+
+.suggestions { margin-top: auto; }
+
+.suggestions-label {
+  font-size: .76rem; letter-spacing: .2em; text-transform: uppercase;
+  color: var(--text-muted); margin-bottom: 10px;
+}
+
+.chips { display: flex; flex-wrap: wrap; gap: 7px; }
+
+.chip {
+  padding: 7px 15px; background: var(--surface); border: 1px solid var(--border);
+  border-radius: 100px; font-family: var(--font-serif); font-size: 1rem;
+  font-weight: 300; font-style: italic; color: var(--text-dim); cursor: pointer;
+  transition: border-color .2s, color .2s, background .2s;
+}
+
+.chip:hover { border-color: var(--border-lit); color: var(--text); background: var(--gold-dim); }
+
+/* ── Right Panel ── */
+.right-panel {
+  padding: 44px 52px 40px;
+  display: flex; flex-direction: column; gap: 18px;
+  animation: fadeUp .6s .2s ease both;
+}
+
+.image-frame {
+  flex: 1; position: relative;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 20px; overflow: hidden;
+  display: flex; align-items: center; justify-content: center;
+  transition: border-color .4s, box-shadow .4s;
+}
+
+.image-frame.has-image {
+  border-color: rgba(212,175,75,0.22); box-shadow: 0 0 60px rgba(212,175,75,0.07);
+}
+
+.image-frame::before, .image-frame::after {
+  content: ''; position: absolute; width: 22px; height: 22px;
+  border-color: rgba(212,175,75,0.35); border-style: solid;
+  z-index: 2; transition: border-color .3s; pointer-events: none;
+}
+.image-frame::before { top: 14px; left: 14px; border-width: 1px 0 0 1px; }
+.image-frame::after  { bottom: 14px; right: 14px; border-width: 0 1px 1px 0; }
+.image-frame:hover::before, .image-frame:hover::after { border-color: rgba(212,175,75,0.7); }
+
+.placeholder-content {
+  display: flex; flex-direction: column; align-items: center; gap: 14px;
+  text-align: center; padding: 40px;
+}
+
+.placeholder-icon {
+  font-size: 2.5rem; color: rgba(212,175,75,0.25);
+  animation: float 4s ease-in-out infinite;
+}
+
+.placeholder-content p {
+  font-family: var(--font-serif); font-size: 1.3rem;
+  font-weight: 300; color: var(--text-dim);
+}
+
+.placeholder-sub {
+  font-size: 1rem !important; color: #d4cfc8 !important;
+  font-style: italic; max-width: 280px; line-height: 1.5;
+}
+
+#result {
+  width: 100%; height: 100%; object-fit: cover;
+  opacity: 0; transition: opacity .65s ease;
+}
+#result.visible { opacity: 1; }
+
+.image-loading {
+  display: flex; flex-direction: column; align-items: center; gap: 18px;
+  color: var(--text-dim); font-size: .86rem; letter-spacing: .14em; text-transform: uppercase;
+}
+
+.spinner {
+  width: 34px; height: 34px;
+  border: 2px solid var(--surface2); border-top-color: var(--gold);
+  border-radius: 50%; animation: spin .85s linear infinite;
+}
+
+.image-actions { display: flex; gap: 10px; }
+
+.btn-secondary {
+  flex: 1; padding: 12px 18px; background: var(--surface); color: var(--text-dim);
+  border: 1px solid var(--border); border-radius: 10px;
+  font-family: var(--font-mono); font-size: .82rem; letter-spacing: .12em;
+  text-transform: uppercase; cursor: pointer;
+  transition: border-color .2s, color .2s, background .2s;
+}
+.btn-secondary:hover { border-color: var(--border-lit); color: var(--text); background: var(--gold-dim); }
+
+@keyframes fadeDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes fadeUp   { from { opacity: 0; transform: translateY(14px);  } to { opacity: 1; transform: translateY(0); } }
+@keyframes spin     { to { transform: rotate(360deg); } }
+@keyframes float    { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-9px); } }
+@keyframes blink    { 0%,100% { opacity: 1; } 50% { opacity: .2; } }
+@keyframes pulse    { 0%,100% { transform: scale(1); } 50% { transform: scale(1.2); } }
+@keyframes recordPulse { 0%,100% { box-shadow: 0 0 0 0 rgba(192,88,74,0); } 50% { box-shadow: 0 0 0 6px rgba(192,88,74,0.15); } }
+
+::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--surface2); border-radius: 3px; }
+
+@media (max-width: 860px) {
+  header { padding: 18px 20px; flex-wrap: wrap; }
+  .sys-stats { order: 3; max-width: 100%; width: 100%; }
+  .container { grid-template-columns: 1fr; height: auto; }
+  .left-panel { border-right: none; border-bottom: 1px solid var(--border); padding: 30px 20px; }
+  .right-panel { padding: 30px 20px; min-height: 60vh; }
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <span class="logo-mark">◈</span>
+    <span style="margin-left:8px">Visio</span>
+  </div>
+  <div class="sys-stats" id="sysStats">
+    <div class="stat-item">
+      <span class="stat-label">CPU</span>
+      <div class="stat-bar-wrap"><div class="stat-bar" id="cpuBar"></div></div>
+      <span class="stat-value" id="cpuVal">—</span>
+    </div>
+    <div class="stat-item">
+      <span class="stat-label">RAM</span>
+      <div class="stat-bar-wrap"><div class="stat-bar" id="ramBar"></div></div>
+      <span class="stat-value" id="ramVal">—</span>
+    </div>
+    <div class="stat-item" id="gpuItem" style="display:none;">
+      <span class="stat-label">GPU</span>
+      <div class="stat-bar-wrap"><div class="stat-bar" id="gpuBar"></div></div>
+      <span class="stat-value" id="gpuVal">—</span>
+    </div>
+  </div>
+  <div class="tagline">Générateur d'image IA</div>
+</header>
+
+<main class="container">
+  <section class="left-panel">
+    <div class="panel-label">01 — Décrivez votre vision</div>
+    <div class="textarea-wrapper">
+      <textarea id="prompt" placeholder="Un paysage de montagne au crépuscule, lumières dorées, style pictural impressionniste…" spellcheck="false" maxlength="500"></textarea>
+      <div class="char-counter"><span id="charCount">0</span> / 500</div>
+    </div>
+    <div class="actions">
+      <button class="btn-generate" id="generateBtn">
+        <span class="btn-icon">✦</span>
+        <span id="generateLabel">Générer l'image</span>
+      </button>
+      <button class="btn-voice" id="voiceBtn" title="Dicter le prompt">
+        <span class="mic-icon">🎙</span>
+        <span>Dicter</span>
+      </button>
+    </div>
+    <div class="status-bar" id="statusBar">
+      <span class="status-dot"></span>
+      <span id="statusText">En attente…</span>
+    </div>
+    <div class="suggestions">
+      <div class="suggestions-label">Inspirations</div>
+      <div class="chips">
+        <span class="chip">Forêt mystique au clair de lune</span>
+        <span class="chip">Portrait rétro-futuriste années 70</span>
+        <span class="chip">Ville flottante dans les nuages</span>
+        <span class="chip">Océan abstrait, palette froide</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="right-panel">
+    <div class="panel-label">02 — Votre création</div>
+    <div class="image-frame" id="imageFrame">
+      <div class="placeholder-content" id="placeholder">
+        <div class="placeholder-icon">◈</div>
+        <p>Votre image apparaîtra ici</p>
+        <p class="placeholder-sub">Décrivez une scène à gauche et cliquez sur Générer</p>
+      </div>
+      <img id="result" alt="Image générée" style="display:none;" />
+      <div class="image-loading" id="imageLoading" style="display:none;">
+        <div class="spinner"></div>
+        <p>Génération en cours…</p>
+      </div>
+    </div>
+    <div class="image-actions" id="imageActions" style="display:none;">
+      <button class="btn-secondary" id="downloadBtn">↓ Télécharger</button>
+      <button class="btn-secondary" id="newBtn">↺ Nouvelle image</button>
+    </div>
+  </section>
+</main>
+
+<script>
+// ═══════════════════════════════════════════════════════
+//  VISIO — Script
+//
+//  Corrections vs version précédente :
+//  ✔ Bearer Token envoyé sur toutes les requêtes
+//  ✔ speech-to-text : POST multipart (pas WebSocket — la route FastAPI est un POST UploadFile)
+//  ✔ prompt-to-image : réponse { images: ["base64..."] } → affichage via data URI
+//  ✔ system-stats : structure imbriquée { cpu.percent, ram.percent, gpus[0] }
+// ═══════════════════════════════════════════════════════
+
+// 🔐 Token Bearer — doit correspondre à API_BEARER_TOKEN dans app.py
+const BEARER_TOKEN = "futures-war-secret-token-2026";
+
+const promptEl  = document.getElementById("prompt");
+const charCount = document.getElementById("charCount");
+
+// ── Compteur de caractères ───────────────────────────────
+promptEl.addEventListener("input", () => {
+  charCount.textContent = promptEl.value.length;
+  charCount.style.color = promptEl.value.length > 450 ? "#c0584a" : "";
+});
+
+// ── Chips ────────────────────────────────────────────────
+document.querySelectorAll(".chip").forEach(chip => {
+  chip.addEventListener("click", () => {
+    promptEl.value = chip.textContent.trim();
+    charCount.textContent = promptEl.value.length;
+    promptEl.focus();
+  });
+});
+
+// ── Générer ──────────────────────────────────────────────
+document.getElementById("generateBtn").addEventListener("click", () => {
+  const p = promptEl.value.trim();
+  if (p) generateImage(p);
+});
+
+// ── Télécharger ──────────────────────────────────────────
+document.getElementById("downloadBtn").addEventListener("click", () => {
+  const img = document.getElementById("result");
+  if (!img.src) return;
+  const a = document.createElement("a");
+  a.href = img.src;
+  a.download = "visio.png";
+  a.click();
+});
+
+// ── Nouvelle image ────────────────────────────────────────
+document.getElementById("newBtn").addEventListener("click", () => {
+  const result = document.getElementById("result");
+  result.classList.remove("visible");
+  setTimeout(() => { result.style.display = "none"; }, 400);
+  document.getElementById("placeholder").style.display = "";
+  document.getElementById("imageActions").style.display = "none";
+  document.getElementById("imageFrame").classList.remove("has-image");
+  setStatus("En attente…", "");
+});
+
+
+// ═══════════════════════════════════════════════════════
+//  1. SPEECH-TO-TEXT  —  POST /api/speech-to-text
+//     La route FastAPI attend : UploadFile (champ "file")
+//     avec Content-Type audio/*
+//     Retourne : { text: "..." }
+// ═══════════════════════════════════════════════════════
+
+let mediaRecorder = null;
+let audioChunks   = [];
+let isRecording   = false;
+
+const voiceBtn = document.getElementById("voiceBtn");
+
+voiceBtn.addEventListener("click", () => {
+  if (isRecording) stopRecording();
+  else startRecording();
+});
+
+async function startRecording() {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    audioChunks  = [];
+    mediaRecorder = new MediaRecorder(stream, { mimeType: "audio/webm;codecs=opus" });
+
+    mediaRecorder.ondataavailable = (e) => {
+      if (e.data.size > 0) audioChunks.push(e.data);
+    };
+
+    mediaRecorder.onstop = async () => {
+      stream.getTracks().forEach(t => t.stop());
+      const blob = new Blob(audioChunks, { type: "audio/webm" });
+      await sendAudio(blob);
+    };
+
+    mediaRecorder.start();
+    isRecording = true;
+    voiceBtn.classList.add("recording");
+    voiceBtn.querySelector("span:last-child").textContent = "Stop";
+    setStatus("Enregistrement… cliquez pour arrêter", "recording");
+
+  } catch (err) {
+    console.error("Erreur micro :", err);
+    setStatus("Accès microphone refusé", "");
+  }
+}
+
+function stopRecording() {
+  if (mediaRecorder && mediaRecorder.state !== "inactive") mediaRecorder.stop();
+  isRecording = false;
+  voiceBtn.classList.remove("recording");
+  voiceBtn.querySelector("span:last-child").textContent = "Dicter";
+  setStatus("Transcription en cours…", "active");
+}
+
+async function sendAudio(blob) {
+  // FastAPI attend un UploadFile dans un champ nommé "file"
+  const formData = new FormData();
+  formData.append("file", blob, "recording.webm");
+
+  try {
+    const response = await fetch("/api/speech-to-text", {
+      method: "POST",
+      headers: { "Authorization": `Bearer ${BEARER_TOKEN}` },
+      // Pas de Content-Type manuel : le navigateur gère le boundary multipart
+      body: formData
+    });
+
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+    const data = await response.json();
+    const texte = data.text || "";
+
+    if (texte) {
+      promptEl.value = texte;
+      charCount.textContent = texte.length;
+      setStatus("Transcription réussie ✦", "success");
+      promptEl.focus();
+    } else {
+      setStatus("Transcription vide, réessayez", "");
+    }
+
+  } catch (err) {
+    console.error("Erreur speech-to-text :", err);
+    setStatus(`Erreur transcription : ${err.message}`, "");
+  }
+}
+
+
+// ═══════════════════════════════════════════════════════
+//  2. PROMPT-TO-IMAGE  —  POST /api/prompt-to-image
+//     Body : { prompt, model, steps, ... }
+//     Retourne : { images: ["base64string", ...], model: "..." }
+//     → On affiche images[0] comme data URI
+// ═══════════════════════════════════════════════════════
+
+async function generateImage(prompt) {
+  const generateBtn   = document.getElementById("generateBtn");
+  const generateLabel = document.getElementById("generateLabel");
+  const imageLoading  = document.getElementById("imageLoading");
+  const placeholder   = document.getElementById("placeholder");
+  const result        = document.getElementById("result");
+  const imageActions  = document.getElementById("imageActions");
+  const imageFrame    = document.getElementById("imageFrame");
+
+  generateBtn.classList.add("loading");
+  generateLabel.textContent = "Génération…";
+  placeholder.style.display = "none";
+  result.style.display      = "none";
+  result.classList.remove("visible");
+  imageLoading.style.display = "flex";
+  imageActions.style.display = "none";
+  imageFrame.classList.remove("has-image");
+  setStatus("Génération en cours…", "active");
+
+  try {
+    const response = await fetch("/api/prompt-to-image", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${BEARER_TOKEN}`
+      },
+      body: JSON.stringify({ prompt })
+    });
+
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      throw new Error(err.detail || `HTTP ${response.status}`);
+    }
+
+    const data = await response.json();
+
+    // Réponse : { images: ["base64..."], model: "..." }
+    if (!data.images || data.images.length === 0) throw new Error("Aucune image retournée");
+
+    // Détecter si c'est déjà une data URI ou du base64 brut
+    const raw = data.images[0];
+    const src = raw.startsWith("data:") ? raw : `data:image/png;base64,${raw}`;
+
+    imageLoading.style.display = "none";
+    result.style.display = "block";
+    result.src = src;
+    result.onload = () => {
+      result.classList.add("visible");
+      imageFrame.classList.add("has-image");
+      imageActions.style.display = "flex";
+      setStatus("Image générée avec succès ✦", "success");
+    };
+
+  } catch (err) {
+    console.error("Erreur prompt-to-image :", err);
+    imageLoading.style.display = "none";
+    placeholder.style.display = "";
+    setStatus(`Erreur : ${err.message}`, "");
+  } finally {
+    generateBtn.classList.remove("loading");
+    generateLabel.textContent = "Générer l'image";
+  }
+}
+
+
+// ═══════════════════════════════════════════════════════
+//  3. SYSTEM STATS  —  GET /api/system-stats
+//     Réponse imbriquée :
+//     {
+//       cpu:  { percent: 45, count: 8 },
+//       ram:  { percent: 62, used_mb, total_mb, ... },
+//       gpus: [ { vram_allocated_mb, vram_total_mb, ... } ]
+//     }
+// ═══════════════════════════════════════════════════════
+
+async function fetchSystemStats() {
+  try {
+    const response = await fetch("/api/system-stats", {
+      headers: { "Authorization": `Bearer ${BEARER_TOKEN}` }
+    });
+    if (!response.ok) return;
+
+    const data = await response.json();
+
+    // CPU
+    if (data.cpu?.percent !== undefined) {
+      updateStatBar("cpu", data.cpu.percent);
+    }
+
+    // RAM
+    if (data.ram?.percent !== undefined) {
+      updateStatBar("ram", data.ram.percent);
+    }
+
+    // GPU — premier GPU de la liste, utilisation VRAM
+    if (data.gpus && data.gpus.length > 0) {
+      document.getElementById("gpuItem").style.display = "";
+      const gpu = data.gpus[0];
+      if (gpu.vram_total_mb > 0) {
+        const gpuPct = (gpu.vram_allocated_mb / gpu.vram_total_mb) * 100;
+        updateStatBar("gpu", gpuPct);
+      }
+    }
+
+  } catch (err) {
+    console.warn("system-stats indisponible :", err.message);
+  }
+}
+
+function updateStatBar(key, value) {
+  const pct = Math.min(100, Math.max(0, value));
+  const bar = document.getElementById(`${key}Bar`);
+  const val = document.getElementById(`${key}Val`);
+  if (!bar || !val) return;
+  bar.style.width  = pct + "%";
+  val.textContent  = Math.round(pct) + "%";
+  bar.className    = "stat-bar" + (pct >= 90 ? " crit" : pct >= 70 ? " warn" : "");
+}
+
+// Lancement immédiat + polling toutes les 3s
+fetchSystemStats();
+setInterval(fetchSystemStats, 3000);
+
+
+// ── Utilitaire statut ────────────────────────────────────
+function setStatus(msg, state) {
+  const bar = document.getElementById("statusBar");
+  document.getElementById("statusText").textContent = msg;
+  bar.className = "status-bar" + (state ? " " + state : "");
+}
+</script>
+</body>
+</html>

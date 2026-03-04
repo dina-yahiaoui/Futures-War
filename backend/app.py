@@ -12,10 +12,12 @@ import torch
 from whisper_utils import get_whisper_service
 from prompt_utils import optimize_prompt, get_negative_prompt
 from gpu_client import get_gpu_client
-
+from frontend.ui import register_ui
 # Charger les variables d'environnement
 from dotenv import load_dotenv
 load_dotenv()
+
+
 
 # =============================================================================
 # CONFIGURATION
@@ -35,7 +37,7 @@ app = FastAPI(
     description="API d'orchestration IA : speech-to-text, prompt-to-image, chat completions",
     version="0.1.0"
 )
-
+register_ui(app)
 # CORS
 app.add_middleware(
     CORSMiddleware,
