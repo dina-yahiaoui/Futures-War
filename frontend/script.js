@@ -3,7 +3,9 @@
 // ============================================
 
 // Configuration
-const API_URL = "https://btpia2026g1-futureswar.dokploy.atelier.ovh";
+const API_URL = window.location.hostname === "127.0.0.1" || window.location.hostname === "localhost"
+    ? "http://127.0.0.1:8000"
+    : "https://btpia2026g1-futureswar.dokploy.atelier.ovh";
 const API_TOKEN = "futures-war-secret-token-2026";
 
 // État de l'application
