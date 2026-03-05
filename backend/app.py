@@ -4,55 +4,50 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Optional, List
 import os
-from datetime import datetime
 import psutil
 import torch
+from dotenv import load_dotenv
 
-# Import des services
+# DB (Nans)
+from db.database import init_db, get_db
+from db import crud
+
+# Services
 from whisper_utils import get_whisper_service
-from prompt_utils import optimize_prompt, get_negative_prompt
 from gpu_client import get_gpu_client
 
+# Prompt pipeline (toi + Nans)
+# - optimize_prompt / get_negative_prompt : version Pierre
+# - build_final_prompt : version Nans (SFW + enrichissement + negative)
+from prompt_utils import optimize_prompt, get_negative_prompt, build_final_prompt
+
 # Charger les variables d'environnement
-from dotenv import load_dotenv
 load_dotenv()
-
-
-# CONFIGURATION
-
 
 API_BEARER_TOKEN = os.getenv("API_BEARER_TOKEN", "futures-war-secret-token-2026")
 
 # Créer le dossier uploads
 os.makedirs("uploads", exist_ok=True)
 
-
-# APPLICATION FASTAPI
-
-
 app = FastAPI(
-    title="AI Orchestrator API",
-    description="API d'orchestration IA : speech-to-text, prompt-to-image, chat completions",
+    title="Futures War API",
+    description="API d'orchestration IA : speech-to-text, prompt-to-image, system-stats",
     version="0.1.0"
 )
 
 # CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["*"],   # à restreindre plus tard si besoin
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-
-# SÉCURITÉ
-
-
+# Sécurité
 security = HTTPBearer()
 
 def verify_token(credentials: HTTPAuthorizationCredentials = Depends(security)):
-    """Vérifie le token Bearer"""
     if credentials.credentials != API_BEARER_TOKEN:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -61,9 +56,13 @@ def verify_token(credentials: HTTPAuthorizationCredentials = Depends(security)):
     return credentials.credentials
 
 
-# MODÈLES DE DONNÉES
+# Init DB au démarrage (Nans)
+@app.on_event("startup")
+def _startup():
+    init_db()
 
 
+# Modèles
 class SpeechToTextResponse(BaseModel):
     text: str
 
@@ -80,13 +79,17 @@ class PromptToImageRequest(BaseModel):
 class PromptToImageResponse(BaseModel):
     images: List[str]
     model: str
+    # Bonus : info prompt pour debug (tu peux retirer si tu veux)
+    original_prompt: Optional[str] = None
+    cleaned_prompt: Optional[str] = None
+    final_prompt: Optional[str] = None
+    negative_prompt: Optional[str] = None
+    saved_id: Optional[int] = None
+    is_sfw: Optional[bool] = None
 
-
-# ROUTES
 
 @app.get("/", tags=["health"])
 def root():
-    """Page d'accueil"""
     return {
         "message": "🚀 Futures War API",
         "version": "0.1.0",
@@ -101,8 +104,6 @@ def root():
 
 
 # SPEECH-TO-TEXT
-
-
 @app.post(
     "/api/speech-to-text",
     response_model=SpeechToTextResponse,
@@ -110,35 +111,20 @@ def root():
     dependencies=[Depends(verify_token)]
 )
 async def speech_to_text(file: UploadFile = File(...)):
-    """
-    Transcription audio → texte avec Whisper
-    
-    Requiert: Bearer Token
-    """
-    
-    # Vérifier que c'est un fichier audio
-    if not file.content_type.startswith('audio/'):
-        raise HTTPException(
-            status_code=400,
-            detail="Le fichier doit être un fichier audio"
-        )
-    
-    # Sauvegarder temporairement
+    if not file.content_type or not file.content_type.startswith("audio/"):
+        raise HTTPException(status_code=400, detail="Le fichier doit être un fichier audio")
+
     file_path = f"uploads/{file.filename}"
     try:
         with open(file_path, "wb") as f:
-            content = await file.read()
-            f.write(content)
-        
-        # Transcrire avec Whisper
+            f.write(await file.read())
+
         whisper_service = get_whisper_service()
         text = whisper_service.transcribe(file_path, language="fr")
-        
-        # Nettoyer
+
         os.remove(file_path)
-        
         return SpeechToTextResponse(text=text)
-        
+
     except Exception as e:
         if os.path.exists(file_path):
             os.remove(file_path)
@@ -146,8 +132,6 @@ async def speech_to_text(file: UploadFile = File(...)):
 
 
 # PROMPT-TO-IMAGE
-
-
 @app.post(
     "/api/prompt-to-image",
     response_model=PromptToImageResponse,
@@ -156,21 +140,59 @@ async def speech_to_text(file: UploadFile = File(...)):
 )
 async def prompt_to_image(request: PromptToImageRequest):
     """
-    Génération d'image à partir d'un prompt
-    
-    Requiert: Bearer Token
+    Génération d'image à partir d'un prompt.
+    - Filtrage SFW + enrichissement (Nans)
+    - Fallback optimize_prompt + negative prompt (Pierre) si besoin
+    - Sauvegarde en SQLite (Nans)
     """
-    
-    # Optimiser le prompt
-    optimized_prompt = optimize_prompt(request.prompt)
-    
-    # Prompt négatif (si pas fourni)
-    negative = request.negative_prompt or get_negative_prompt()
-    
-    # Générer l'image
+
+    prompt_input = (request.prompt or "").strip()
+    if not prompt_input:
+        raise HTTPException(status_code=400, detail="Prompt vide")
+
+    # 1) Pipeline Nans (SFW + enrichissement + negative)
+    prompt_result = None
+    try:
+        prompt_result = build_final_prompt(prompt_input)
+    except Exception:
+        prompt_result = None
+
+    # 2) Si build_final_prompt existe et renvoie un dict attendu
+    if isinstance(prompt_result, dict) and "success" in prompt_result:
+        if not prompt_result["success"]:
+            # log tentative bloquée
+            try:
+                gen = crud.create_generation(
+                    prompt=prompt_input,
+                    image_path="",
+                    is_sfw=False,
+                    flagged_reason=prompt_result.get("error")
+                )
+                saved_id = gen.get("id")
+            except Exception:
+                saved_id = None
+
+            raise HTTPException(
+                status_code=400,
+                detail=prompt_result.get("error", "Prompt refusé (SFW)")
+            )
+
+        final_prompt = prompt_result.get("positive_prompt") or prompt_input
+        negative = prompt_result.get("negative_prompt") or (request.negative_prompt or get_negative_prompt())
+        cleaned = prompt_result.get("cleaned_text")
+        original = prompt_result.get("original_text", prompt_input)
+
+    else:
+        # 3) Fallback Pierre (si module Nans pas dispo)
+        final_prompt = optimize_prompt(prompt_input)
+        negative = request.negative_prompt or get_negative_prompt()
+        cleaned = None
+        original = prompt_input
+
+    # 4) Génération image via GPU client
     gpu_client = get_gpu_client()
     images = gpu_client.generate_image(
-        prompt=optimized_prompt,
+        prompt=final_prompt,
         negative_prompt=negative,
         width=request.width,
         height=request.height,
@@ -178,32 +200,45 @@ async def prompt_to_image(request: PromptToImageRequest):
         guidance_scale=request.guidance_scale,
         seed=request.seed
     )
-    
+
+    # 5) Sauvegarde DB (si au moins 1 image)
+    saved_id = None
+    try:
+        image_path = images[0] if images else ""
+        gen = crud.create_generation(
+            prompt=final_prompt,
+            image_path=image_path,
+            is_sfw=True,
+            flagged_reason=None
+        )
+        saved_id = gen.get("id")
+    except Exception:
+        saved_id = None
+
     return PromptToImageResponse(
         images=images,
-        model=request.model
+        model=request.model,
+        original_prompt=original,
+        cleaned_prompt=cleaned,
+        final_prompt=final_prompt,
+        negative_prompt=negative,
+        saved_id=saved_id,
+        is_sfw=True
     )
 
 
 # SYSTEM STATS
-
-
 @app.get(
     "/api/system-stats",
     tags=["orchestrator"],
     dependencies=[Depends(verify_token)]
 )
 async def system_stats():
-    """Statistiques système"""
-    
-    # CPU
     cpu_percent = psutil.cpu_percent(interval=1)
     cpu_count = psutil.cpu_count()
-    
-    # RAM
+
     ram = psutil.virtual_memory()
-    
-    # GPU
+
     gpus = []
     if torch.cuda.is_available():
         for i in range(torch.cuda.device_count()):
@@ -214,19 +249,14 @@ async def system_stats():
                 "vram_allocated_mb": torch.cuda.memory_allocated(i) / 1024 / 1024,
                 "vram_reserved_mb": torch.cuda.memory_reserved(i) / 1024 / 1024
             })
-    
-    # Disque
+
     disk = psutil.disk_usage('/')
-    
-    # Services
+
     whisper_service = get_whisper_service()
     whisper_info = whisper_service.get_info()
-    
+
     return {
-        "cpu": {
-            "count": cpu_count,
-            "percent": cpu_percent
-        },
+        "cpu": {"count": cpu_count, "percent": cpu_percent},
         "ram": {
             "total_mb": ram.total / 1024 / 1024,
             "available_mb": ram.available / 1024 / 1024,
@@ -241,29 +271,5 @@ async def system_stats():
             "free_gb": disk.free / 1024 / 1024 / 1024,
             "percent": disk.percent
         },
-        "uptime_seconds": None,
         "whisper": whisper_info,
-        "zimage": {
-            "model": "Tongyi-MAI/Z-Image-Turbo",
-            "device": "cpu",
-            "steps": 9,
-            "guidance": 0.0,
-            "height": 1024,
-            "width": 1024
-        }
     }
-
-
-# LANCEMENT
-
-
-if __name__ == "__main__":
-    import uvicorn
-    print("=" * 60)
-    print("🚀 Démarrage de Futures War API")
-    print("=" * 60)
-    print(f"📝 Documentation: http://localhost:8000/docs")
-    print(f"🔐 Token: {API_BEARER_TOKEN}")
-    print("=" * 60)
-    uvicorn.run("app:app", host="0.0.0.0", port=8000, reload=True)
-

@@ -1,0 +1,8 @@
+*.db
+backend/*.db
+__pycache__/
+*.pyc
+*.db
+.env
+backend/uploads/
+backend/generated_*.png
