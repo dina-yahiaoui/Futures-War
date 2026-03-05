@@ -3,7 +3,7 @@
 // ============================================
 
 // Configuration
-const API_URL = "http://localhost:8000";
+const API_URL = "https://btpia2026g1-futureswar.dokploy.atelier.ovh";
 const API_TOKEN = "futures-war-secret-token-2026";
 
 // État de l'application
