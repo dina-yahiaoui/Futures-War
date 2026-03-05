@@ -116,16 +116,37 @@ async def speech_to_text(file: UploadFile = File(...)):
 
     file_path = f"uploads/{file.filename}"
     try:
+        # 1) Sauvegarde le fichier uploadé
         with open(file_path, "wb") as f:
             f.write(await file.read())
 
+        # 2) Vérifie que ffmpeg est installé (sinon Whisper va planter)
+        import shutil
+        if shutil.which("ffmpeg") is None:
+            # On supprime le fichier temporaire avant de répondre
+            if os.path.exists(file_path):
+                os.remove(file_path)
+
+            raise HTTPException(
+                status_code=400,
+                detail="ffmpeg est requis pour la transcription audio. Installe ffmpeg (ou lance le backend dans un Docker qui contient ffmpeg)."
+            )
+
+        # 3) Transcription Whisper
         whisper_service = get_whisper_service()
         text = whisper_service.transcribe(file_path, language="fr")
 
-        os.remove(file_path)
+        # 4) Nettoyage
+        if os.path.exists(file_path):
+            os.remove(file_path)
+
         return SpeechToTextResponse(text=text)
 
+    except HTTPException:
+        # On laisse passer les erreurs HTTP (comme celle du ffmpeg)
+        raise
     except Exception as e:
+        # Nettoyage en cas d'erreur
         if os.path.exists(file_path):
             os.remove(file_path)
         raise HTTPException(status_code=500, detail=str(e))
