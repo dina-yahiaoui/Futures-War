@@ -283,9 +283,9 @@ print("✅ Image sauvegardée !")
 ## 👥 Équipe
 
 - **Pierre** - Backend & API
-- **[Nom]** - Frontend
-- **[Nom]** - Prompts & Optimisation
-- **[Nom]** - Container & Déploiement
+- **Tranjan** - Frontend
+- **Nans** - Prompts & Optimisation
+- **Dina** - Container & Déploiement
 
 **Product Owner :** SuperMan  
 **Email :** SuperMan@laplateforme.io
