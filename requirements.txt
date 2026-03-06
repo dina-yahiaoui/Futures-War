@@ -14,6 +14,7 @@ git+https://github.com/openai/whisper.git
 # PyTorch (version compatible)
 torch==2.1.2
 torchaudio==2.1.2
+numpy<2
 
 # Validation de données
 pydantic
