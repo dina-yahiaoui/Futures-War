@@ -6,6 +6,7 @@ from typing import Optional, List
 import os
 import psutil
 import torch
+import traceback
 from dotenv import load_dotenv
 
 # DB (Nans)
@@ -17,8 +18,6 @@ from whisper_utils import get_whisper_service
 from gpu_client import get_gpu_client
 
 # Prompt pipeline (toi + Nans)
-# - optimize_prompt / get_negative_prompt : version Pierre
-# - build_final_prompt : version Nans (SFW + enrichissement + negative)
 from prompt_utils import optimize_prompt, get_negative_prompt, build_final_prompt
 
 # Charger les variables d'environnement
@@ -38,7 +37,7 @@ app = FastAPI(
 # CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],   # à restreindre plus tard si besoin
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -79,7 +78,6 @@ class PromptToImageRequest(BaseModel):
 class PromptToImageResponse(BaseModel):
     images: List[str]
     model: str
-    # Bonus : info prompt pour debug (tu peux retirer si tu veux)
     original_prompt: Optional[str] = None
     cleaned_prompt: Optional[str] = None
     final_prompt: Optional[str] = None
@@ -120,13 +118,13 @@ async def speech_to_text(file: UploadFile = File(...)):
         with open(file_path, "wb") as f:
             f.write(await file.read())
 
-        # 2) Vérifie que ffmpeg est installé (sinon Whisper va planter)
+        # 2) Vérifie que ffmpeg est installé
         import shutil
-        if shutil.which("ffmpeg") is None:
-            # On supprime le fichier temporaire avant de répondre
+        ffmpeg_path = shutil.which("ffmpeg")
+        print(f"🔍 ffmpeg trouvé: {ffmpeg_path}")
+        if ffmpeg_path is None:
             if os.path.exists(file_path):
                 os.remove(file_path)
-
             raise HTTPException(
                 status_code=400,
                 detail="ffmpeg est requis pour la transcription audio. Installe ffmpeg (ou lance le backend dans un Docker qui contient ffmpeg)."
@@ -143,12 +141,12 @@ async def speech_to_text(file: UploadFile = File(...)):
         return SpeechToTextResponse(text=text)
 
     except HTTPException:
-        # On laisse passer les erreurs HTTP (comme celle du ffmpeg)
         raise
     except Exception as e:
-        # Nettoyage en cas d'erreur
         if os.path.exists(file_path):
             os.remove(file_path)
+        print(f"❌ ERREUR TRANSCRIPTION: {type(e).__name__}: {e}")
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -160,28 +158,18 @@ async def speech_to_text(file: UploadFile = File(...)):
     dependencies=[Depends(verify_token)]
 )
 async def prompt_to_image(request: PromptToImageRequest):
-    """
-    Génération d'image à partir d'un prompt.
-    - Filtrage SFW + enrichissement (Nans)
-    - Fallback optimize_prompt + negative prompt (Pierre) si besoin
-    - Sauvegarde en SQLite (Nans)
-    """
-
     prompt_input = (request.prompt or "").strip()
     if not prompt_input:
         raise HTTPException(status_code=400, detail="Prompt vide")
 
-    # 1) Pipeline Nans (SFW + enrichissement + negative)
     prompt_result = None
     try:
         prompt_result = build_final_prompt(prompt_input)
     except Exception:
         prompt_result = None
 
-    # 2) Si build_final_prompt existe et renvoie un dict attendu
     if isinstance(prompt_result, dict) and "success" in prompt_result:
         if not prompt_result["success"]:
-            # log tentative bloquée
             try:
                 gen = crud.create_generation(
                     prompt=prompt_input,
@@ -204,13 +192,11 @@ async def prompt_to_image(request: PromptToImageRequest):
         original = prompt_result.get("original_text", prompt_input)
 
     else:
-        # 3) Fallback Pierre (si module Nans pas dispo)
         final_prompt = optimize_prompt(prompt_input)
         negative = request.negative_prompt or get_negative_prompt()
         cleaned = None
         original = prompt_input
 
-    # 4) Génération image via GPU client
     gpu_client = get_gpu_client()
     images = gpu_client.generate_image(
         prompt=final_prompt,
@@ -222,7 +208,6 @@ async def prompt_to_image(request: PromptToImageRequest):
         seed=request.seed
     )
 
-    # 5) Sauvegarde DB (si au moins 1 image)
     saved_id = None
     try:
         image_path = images[0] if images else ""
