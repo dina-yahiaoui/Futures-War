@@ -2,8 +2,10 @@
 Service de transcription audio avec Whisper
 Conforme à la spec OpenAPI
 """
-import whisper
 import torch
+torch.set_num_threads(1)
+
+import whisper
 import os
 from typing import Optional
 
@@ -46,7 +48,7 @@ class WhisperService:
         result = self.model.transcribe(
             audio_path,
             language=language,
-            fp16=(self.device == "cuda")  # Optimisation GPU
+            fp16=False
         )
         
         text = result["text"].strip()
