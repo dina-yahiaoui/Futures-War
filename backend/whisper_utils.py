@@ -2,9 +2,6 @@
 Service de transcription audio avec Whisper
 Conforme à la spec OpenAPI
 """
-import os
-os.environ["PATH"] += os.pathsep + r"C:\ffmpeg-master-latest-win64-gpl\bin"
-
 import whisper
 import torch
 import os
